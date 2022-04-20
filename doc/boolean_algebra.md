@@ -49,7 +49,7 @@ $\exist_xF = F_x + F_{x'}= y + z$
 令 $\exist_xF=1\Rightarrow y=1\ or\ z=1$
 $F_{y=1}=x+x'z\Rightarrow \exist x=1\ 使得 \ F_{y=1}=1$
 $F_{z=1}=xy+x'\Rightarrow \exist x=0\ 使得\ F_{y=1}=1$
-## Aditional properties
+## Additional properties
 $\forall_{xy}F=\forall_x(\forall_yF)=F_{xy}\cdot F_{xy'}\cdot F_{x'y}\cdot F_{x'y'}$
 $\exist_{xy}F=\exist_x(\exist_yF)=F_{xy} + F_{xy'} + F_{x'y} + F_{x'y'}$
 # Application To Logic Network Repair
