@@ -53,3 +53,5 @@ $F_{z=1}=xy+x'\Rightarrow \exist x=0\ 使得\ F_{y=1}=1$
 $\forall_{xy}F=\forall_x(\forall_yF)=F_{xy}\cdot F_{xy'}\cdot F_{x'y}\cdot F_{x'y'}$
 $\exist_{xy}F=\exist_x(\exist_yF)=F_{xy} + F_{xy'} + F_{x'y} + F_{x'y'}$
 # Application To Logic Network Repair
+需要一个电路来实现 $f(a,b)=ab + b'$ 的逻辑功能，假设实现错了一个gate，如图中的红色框部分，需要修复它并得到它正确实现的逻辑门。
+![wrong_circuit](./img/wrong_circuit.png)
