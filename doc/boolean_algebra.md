@@ -68,22 +68,78 @@ $$Z=G\overline{\oplus}f$$$$Z_{ab}=G_{ab}\overline{\oplus}f_{ab}$$$$Z_{ab'}=G_{ab
 如果 $d_3$ 取1，该mux实现的是一个or gate，如果 $d_3$ 取0，该mux实现的是一个exor gate，因此使用or或者exor均可实现对该网络的修复。
 # Recursive tautology
 ## Tautology
-一个布尔函数 $f$ 如果恒为真则可以将其称为tautology，本节阐述如何判断一个布尔函数是不是tautology
+一个布尔函数 $f$ 如果恒为真则可以将其称为tautology
 ## Positional Cube Notation(PCN)
-如果将一个布尔函数表示为SOP形式，则可以用PCN来表示，用一个cube来表示SOP中的单个乘积项，用2bit的slot来表示一个单变量，01表示乘积项中包含该变量，10表示乘积项中包含该变量的反变量，11表示乘积项中不包含该变量的原变量或者反变量，如 $abc, abc', bc$分别可以表示为：
+用PCN来表示一个SOP形式的布尔函数，一个cube表示SOP中的单个乘积项，cube用2bit的slot来表示一个单变量
+* 01表示乘积项中包含该变量
+* 10表示乘积项中包含该变量的反变量
+* 11表示乘积项中不包含该变量的原变量或者反变量
+如 $abc, abc', bc$分别可以表示为：
 $abc\ : [01\ 01\ 01]$
 $abc': [01\ 01\ 10]$
 $bc\ \ \ : [11\ 01\ 01]$
-如果需要将两个乘积项相与只需要将cube中对应slot分别相与即可得到结果，如果结果中包含00的slot，说明两个乘积项中分别包含该slot所对应变量的原变量和反变量，此时可以认为该cube为0。
-对于一个SOP，可以用一个cube list来表示一个，如 $f(a,b,c)=a+bc+ab$ 可以表示为：
-$[01\ 11\ 11], [11\ 01\ 01], [01\ 01 11]$
+
+整个SOP用一个cube list表示，如 $f(a,b,c)=a+bc+ab$ 可以表示为：$[01\ 11\ 11], [11\ 01\ 01], [01\ 01 11]$
 ## Cofactor与tautology
 $f$ 是 tautology 当且仅当 $f_x$ 和$f_{x'}$ 都是 tautology
 **证明：**
     如果 $f()==1$ ,显然 $f_x$ 和 $f_{x'}$ 均为1
-    如果 $f_x=1, f_x'=1$, 根据香农展开式，$f()=xf_x + x'f_{x'} = x + x' = 1$  
-## 递归方法
-如果不能判断出f是否是tautology，可以求出f关于某个变量的Positive cofactor 和 Negative cofactor，然后分别判断cofactor是不是tautology，使用此方法需要确定一些机制
-* 变量选取规则：选取哪个变量来求cofactor
+    如果 $f_x=1, f_x'=1$, 根据香农展开式有 $f()=xf_x + x'f_{x'} = x + x' = 1$  
+## 判断tautology的方法
+根据以上描述的tautology与cofactor的关系可以采用递归的方式来判断f是否是tautology，如果能判断出f是tautology则直接能得到结果，否则分别求出f关于某个变量的positive 和 negative cofactor，再分别判断两个cofactor是否是tautology, 这个方法被称作Unate recursive paramdigm(URP), 进行URP需要确定如下三点：
+* 求Cofactor的方法
 * 终止规则：什么时候可以断定 $f==1$ 或者 $f != 1$ 并终止递归
-* cofactor的表示方法
+* 变量选取规则：选取哪个变量来求cofactor
+
+### Unate recursive paramdigm
+#### 求取Cofactor
+布尔函数用cube list表示，求取布尔函数关于 $x$ 的cofactor需要对cube list中的每个cube根据 $x$ 在该cube中对应slot的取值进行如下操作
+##### Positive cofactor：
+* $x$ 对应的slot是 $10$: 将该cube从cube list中移除，因为它包含$x'$
+* $x$ 对应的slot是 $01$: 将该cube中的该slot改为$11$，因为$x$取1之后该乘积项中就不包含$x$了
+* $x$ 对应的slot是 $11$: 不做任何操作，因为此乘积项中不包含 $x$
+##### Negative cofactor:
+* $x$ 对应的slot是 $01$: 将该cube从cube list中移除，因为它包含$x$
+* $x$ 对应的slot是 $10$: 将该cube中的该slot改为$11$，因为$x$取0之后该乘积项中就不包含$x$了
+* $x$ 对应的slot是 $11$: 不做任何操作，因为此乘积项中不包含 $x$
+#### 终止规则
+* Unate function：SOP形式的布尔函数中所有变量都以同一个极性出现
+$ab + ac'd + c'de'$：是unate
+$xy + x'y + xyz' + z$：不是unate但是它关于变量 $y$ 是unate
+
+**重要结论：** 一个cube list如果是unate，当且仅当它包含一个所有slot都是11的cube。
+当得到一个 unate cube list 时可以采用如下终止规则
+* 终止规则1: 该cube list包含所有slot都是11的cube，此时该cube list对应的布尔函数是tautology
+* 终止规则2: 该cube list不包含所有slot都是11的cube，此时该cube list对应的布尔函数不是tautology
+
+也可以增加其它的可能的终止规则，比如cube list中存在不同极性的单变量cube
+#### 变量选取规则
+选取most not-unate 变量
+* 选取规则1：选取被最多乘积项依赖的binate变量
+* 选取规则2：如果被最多乘积项依赖的binate变量有多个时，选取正变量和反变量的差值绝对值小的变量
+
+如从如下的cube list中选取一个变量
+$\begin{matrix}x &  y &  z & w\\01 & 01 & 01 & 01 \\10 & 11 & 01 & 01\\10 & 11 & 11 & 10\\ 01 & 01 & 11 & 01\end{matrix}$
+根据规则一可以选出 $x$ 和 $w$ 他们都是unate且被四个乘积项依赖
+然后根据规则二, $x$ 中正变量和反变量数目的差值绝对值是0，$w$ 中正变量和反变量数目的差值绝对值是2，因此 $x$ 是最终的候选。
+#### 伪代码
+```
+IsTautology(f represent by cube list)
+    if (f is unate) {
+      apply unate tautology terminationn rules
+      if (f is Constant 1) {
+        return 1
+      } else {
+        return 0
+      }
+    } else {
+        appply other termination rules
+        if (f is Constant 1) {
+          return 1
+        } else {
+          return 0
+        }
+        apply variable selection rules get variable x
+        return IsTautology(fx) && IsTautology(fx')
+    }
+```
