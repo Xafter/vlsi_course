@@ -143,3 +143,244 @@ IsTautology(f represent by cube list)
         return IsTautology(fx) && IsTautology(fx')
     }
 ```
+# BDD
+用顶点表示变量，出边表示对该变量的一个决策(取0或者取1), 叶子节点表示布尔函数的取值，如下图表示一个三变量布尔函数的BDD
+```dot
+digraph binaryTree{
+    node[shape=circle,color=red,fontcolor=blue,fontsize=10];
+    a->b[style=dotted,label="a=0"];
+    nodeb[label=b];
+    a->nodeb[label="a=1"];
+    b->c[style=dotted,label="b=0"];
+    nodec1[label=c];
+    nodec2[label=c];
+    nodec3[label=c];
+    b->nodec1[label="b=1"];
+    nodeb->nodec2[style=dotted, label="b=0"];
+    nodeb->nodec3[label="b=1"];
+    node[shape=rectangle,color=green,fontcolor=blue,fontsize=10,height=.5,width=.5];
+    z1[label="0"];
+    z2[label="0"];
+    z3[label="0"];
+    z4[label="1"];
+    z5[label="0"];
+    z6[label="1"];
+    z7[label="0"];
+    z8[label="1"];
+    c->z1[style=dotted, label="c=0"];
+    c->z2[label="c=1"];
+    nodec1->z3[style=dotted,label="c=0"];
+    nodec1->z4[label="c=1"];
+    nodec2->z5[style=dotted,label="c=0"];
+    nodec2->z6[label="c=1"];
+    nodec3->z7[style=dotted,label="c=0"];
+    nodec3->z8[label="c=1"];
+}
+```
+从上图中可以看出，BDD的规模与真值表的规模是一致的，随着变量的增加，其规模呈现出爆炸式增长，可以采取一些策略对BDD进行简化
+## BDD简化(ROBDD)
+* 合并等价的叶子节点
+```dot
+digraph binaryTree{
+    node[shape=circle,color=red,fontcolor=blue,fontsize=10];
+    a->b[style=dotted,label="a=0"];
+    nodeb[label=b];
+    a->nodeb[label="a=1"];
+    b->c[style=dotted,label="b=0"];
+    nodec1[label=c];
+    nodec2[label=c];
+    nodec3[label=c];
+    b->nodec1[label="b=1"];
+    nodeb->nodec2[style=dotted, label="b=0"];
+    nodeb->nodec3[label="b=1"];
+    node[shape=rectangle,color=green,fontcolor=blue,fontsize=10,height=.5,width=.5];
+    0;
+    1;
+    c->0[style=dotted, label="c=0"];
+    c->0[label="c=1"];
+    nodec1->0[style=dotted,label="c=0"];
+    nodec1->1[label="c=1"];
+    nodec2->0[style=dotted,label="c=0"];
+    nodec2->1[label="c=1"];
+    nodec3->0[style=dotted,label="c=0"];
+    nodec3->1[label="c=1"];
+}
+```
+* 合并同构的节点
+
+```dot
+digraph isomorphic {
+    subgraph before {
+      node[shape=circle,color=red,fontcolor=blue,fontsize=10];
+      a;
+      a1[label=a];
+      a->x[style=dotted];
+      a->y;
+      a1->x[style=dotted];
+      a1->y;
+    }
+    subgraph after {
+      node[shape=circle,color=red,fontcolor=blue,fontsize=10];
+      suba[label=a];
+      subx[label=x];
+      suby[label=y];
+      suba->subx[style=dotted];
+      suba->suby;
+    } {
+      rank=same;
+
+      a1->suba[label="to", color="red"];
+      a->a1[label="mrege", color="red"]
+    }
+}
+```
+```dot
+digraph binaryTree{
+    node[shape=circle,color=red,fontcolor=blue,fontsize=10];
+    a->b[style=dotted,label="a=0"];
+    nodeb[label=b];
+    a->nodeb[label="a=1"];
+    b->c[style=dotted,label="b=0"];
+    nodec3[label=c];
+    b->nodec3[label="b=1"];
+    nodeb->nodec3[style=dotted, label="b=0"];
+    nodeb->nodec3[label="b=1"];
+    node[shape=rectangle,color=green,fontcolor=blue,fontsize=10,height=.5,width=.5];
+    0;
+    1;
+    c->0[style=dotted, label="c=0"];
+    c->0[label="c=1"];
+    nodec3->0[style=dotted,label="c=0"];
+    nodec3->1[label="c=1"];
+}
+```
+* 消除冗余节点
+```dot
+digraph {
+  node[shape=circle,color=red,fontcolor=blue,fontsize=10];
+  nodeclouds->x[style=dotted];
+  nodeclouds->x;
+  nodeclouds->x[style=dotted];
+  nodeclouds->x;
+  x->y[style=dotted];
+  x->y;
+  subgraph after {
+    subclouds[label=nodeclouds];
+    suby[label=y];
+    subclouds->suby[style=dotted];
+    subclouds->suby;
+    subclouds->suby[style=dotted];
+    subclouds->suby;
+  }
+  subgraph example {
+    node[shape=circle,color=red,fontcolor=blue,fontsize=10];
+    a->b[style=dotted,label="a=0"];
+    a->nodec3[label="a=1"];
+    b->0[style=dotted,label="b=0"];
+    nodec3[label=c];
+    b->nodec3[label="b=1"];
+    node[shape=rectangle,color=green,fontcolor=blue,fontsize=10,height=.5,width=.5];
+    0;
+    1;
+    nodec3->0[style=dotted,label="c=0"];
+    nodec3->1[label="c=1"];
+  }
+}
+```
+## BDD共享
+BDD里的任意一个节点都可以表示一个布尔函数，因此如果两个布尔函数中有相同的部分，无需为该部分创建多次，只需要创建一次该结构并在多个BDD中共享。
+## BDD构建
+从PI遍历到PO，每一个gate都被当作一个BDD operation，保证每个operation产生的新的BDD都会reduced，ordered，shared。
+## BDD的用途举例
+### 判断布尔函数是否等价
+只需要判断两个BDD的指针地址是否相同
+### 寻找使得两个布尔函数取不同值的输入
+构建出两个布尔函数相异或之后的BDD，并找出该BDD从根节点到为1的叶子节点的路径
+### tautology checking
+一个布尔函数如果是tautology，它的BDD是单个1节点
+### SAT
+判断一个布尔函数是否可满足，从该布尔函数的根节点到叶子节点的路径就是一个解，若找不到说明不可满足。
+## BDD变量排序(经验方法)
+* 相关的输入应该排在一起
+* 对函数取值可以取决定性作用的变量应该排在一起且靠近BDD的顶部
+
+如$a_1b_1+a_2b_2+a_3b_3$在取两种不同的变量顺序时的BDD分别为
+```dot
+digraph {
+  subgraph {
+    node[shape=circle, fontsize=10, color=red];
+    0[shape=rectangle, fontsize=10, color=green, width=0.5, height=0.5];
+    1[shape=rectangle, fontsize=10, color=green, width=0.5, height=0.5];
+    a1->b1;
+    a1->a2[style=dotted];
+    b1->a2[style=dotted];
+    b1->1;
+    a2->a3[style=dotted];
+    a2->b2;
+    b2->a3[style=dotted];
+    b2->1;
+    a3->b3;
+    a3->0[style=dotted];
+    b3->0[style=dotted];
+    b3->1;
+  }
+  subgraph a2 {
+    node[shape=circle, fontsize=10, color=red];
+    sa1[label="a1"];
+    {
+      rank=same;
+      sa21[label="a2"];
+      sa22[label="a2"];
+    }
+    {
+      rank=same;
+      sa31[label="a3"];
+      sa32[label="a3"];
+      sa33[label="a3"];
+      sa34[label="a3"];
+    }
+    {
+      rank=same;
+      sb11[label="b1"];
+      sb12[label="b1"];
+      sb13[label="b1"];
+      sb14[label="b1"];
+    }
+    {
+      rank=same;
+      sb21[label="b2"];
+      sb22[label="b2"];
+    }
+    sb31[label="b3"];
+    {
+      rank=same
+      s0[shape=rectangle, fontsize=10, color=green, width=0.5, height=0.5, label=0];
+      s1[label=1, shape=rectangle, fontsize=10, color=green, width=0.5, height=0.5];
+    }
+    s0[label="0"];
+    s1[label="1"];
+    sa1->sa22;sa1->sa21[style=dotted];
+    sa21->sa31[style=dotted];sa21->sa32;
+    sa22->sa33[style=dotted];sa22->sa34;
+    sa33->sb11;sa33->sb12[style=dotted];
+    sa34->sb13[style=dotted];sa34->sb14;
+    sa31->s0[style=dotted];
+    sa31->sb31;
+    sa32->sb21;
+    sa32->sb22[style=dotted];
+    sb21->s1;
+    sb21->sb31[style=dotted];
+    sb22->s1;
+    sb11->sb21[style=dotted];
+    sb11->s1;
+    sb12->sb22[style=dotted];
+    sb12->s1;
+    sb13->s0[style=dotted];
+    sb13->s1;
+    sb14->sb31[style=dotted];
+    sb14->s1;
+    sb31->s0[style=dotted];
+    sb31->s1;
+  }
+}
+```
