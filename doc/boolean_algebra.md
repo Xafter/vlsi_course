@@ -384,3 +384,119 @@ digraph {
   }
 }
 ```
+# SAT
+* 给出一个布尔函数$F(x_1,\cdots, x_n)$的适当表示
+* 寻找一组输入使得$F=1$
+* 如果没有可以满足的输入则给出证明并返回信息
+## CNF
+标准的POS形式
+$$F=(a+c)(b+c)(a'+b'+c')$$上式中每一个求和项如 $a+c$ 被称作一个clause, $a, c$ 等被称作positive literal，$a', b'$ 被称作negative literal。
+## Clause的状态
+当对一些输入变量赋一定的值的时，CNF中的每个clause可以处于以下三种状态
+* Satisfied（该clause在该赋值下为1）
+* Conflicting（该clause在该赋值下为0）
+* unresolved（该clause在该赋值下取值不确定）
+
+例：给定CNF
+$$F=(a+b')(a'+b+c')(a+c+d)(a'+b'+c')$$令 $a=0,b=1$，CNF 中的各个clause的状态分别为 $a+b'$ clonflicting, $a'+b+c'$ satisfied, $a+c+d$ unresolved, $a'+b'+c'$ satisified。
+
+## Recursively方法DPLL
+* Decision:
+  * 选择一个变量并赋值；简化CNF
+  * 如果可以确定是否SAT，则停止
+* Deduction
+  * 基于已有的赋值与clause的结构对CNF进行迭代的简化
+  * 当不能简化时，如果可以确定是否SAT则停止，否则回溯到Decide
+### Boolean constraint propagation
+BCP主要用来进行上述的Deduction过程，其中最著名的策略是使用Unit clause rule
+* 一个clause如果只有一个literal没有被赋值则称为**unit clause**
+
+unit clause只有一种方式能SAT，即对该clause中未赋值赋值的literal赋1或者0（取决于该literal的极性），这一赋值操作被称作**implication**，这一implication有可能使得新的clause变为unit clause，因此又能对新的变量进行implication，如此循环的进行implication的过程被称作BCP。
+
+例：$$F=(a+c)(b+c)(a'+b'+c')$$假设已经进行了部分赋值$a=1,b=1$,clause $(a'+b'+c')$ 为unit clause，可以进行implication得到$c=0$
+
+### BCP终止规则
+* SAT: 寻找到一组赋值使得所有的clause都为1
+  * 返回结果
+* Unresolved：有一个或者更多的clause 的取值不确定
+  * 选择一个新的未赋值的变量对其进行新的赋值并基于新的赋值进行BCP
+* Conflict：有一个或者更多的clause的取值为0
+  * 回溯到最近的一次赋值操作(注意不是implication）
+    * 若该变量的所有取值均已尝试过，则直接选取一个新的变量进行赋值
+    * 若该变量还有其他取值未尝试过，则选择新的取值对该变量进行赋值并基于新的赋值进行BCP
+## 电路等价性校验转化为SAT
+假设有两个组合逻辑电路，他们的输入相同，输出数目相同，需要取check这两个电路的等价性，只需要将这两个电路对应的输出异或并将所有异或的结果相或得到一个新的多输入单输出的电路，只需要check这个电路是否SAT就能判断这两个电路是否等价。
+## 组合逻辑电路转化为CNF
+### Gate consistency function
+假设给定一个与非门其输入与输出的关系为 $d=(ab)'$, 它的gate consistency function为$$\phi_d=[d==(ab)']=d\overline{\oplus}(ab)'=(a+d)(b+d)(a'+b'+d')$$
+gate consistency function为1表征的意义是gate的输出与其由输入表达的逻辑应该一致。
+### 各种gate的gate consistency function
+$z=x\rightarrow (x' + z)(x + z')$
+$z=x'\rightarrow (x+z)(x'+z')$
+$z=NOR(x_1,\cdots,x_n)\rightarrow (\sum_{i=1}^nx_i + z)\prod_{i=1}^n(x_i'+z')$
+$z=OR(x_1,\cdots,x_n)\rightarrow (\sum_{i=1}^nx_i + z)\prod_{i=1}^n(x_i'+z)$
+$z=NAND(x_1,\cdots,x_n)\rightarrow (\sum_{i=1}^nx_i' + z')\prod_{i=1}^n(x_i+z)$
+$z=AND(x_1,\cdots,x_n)\rightarrow (\sum_{i=1}^nx_i' + z)\prod_{i=1}^n(x_i+z')$
+### 转化方法
+将该组合逻辑电路(单输出)的输出变量与该电路中所有gate的gate consistency function相与即可得到该组合逻辑电路的CNF表示。
+# Two level logic
+Two level logic指的是使用SOP形式的电路来表示一个布尔逻辑函数，它只需要两级电路即可以表达任意的布尔逻辑，第一级用若干个与门，第二级使用一个或门将所有第一级所有与门的输出相或。
+## Two level minimization
+寻找一个two level logic的最优表示形式，使得所使用的与门的数目最少, 但是要寻找一个最优解太难实现，因此退而求其次尽可能的求到一个比较优的解。
+![best_good](./img/best_good.jpeg)
+如上图是一个最优解和一个相对较优的解的卡诺图表示，他们都是使每一个product项“尽可能的大”，这些“尽可能的大”的product项被称作**Primes**，最优解一定是Primes的覆盖（result from 1950s），可以看出这两个解都是irredundant，即不能通过移除一个prime而获得更优的解。
+## Reduce-Expand-Irredundant optimization
+假设以下面的卡诺图作为开始
+![begin_map](./img/begin_map.png)
+* Expand：扩充每个cube使其尽可能的大,即让它变为prime
+![expand](./img/expand.png)
+* Irredundant：移除redundant cube，该cube中的所有的1均被其他的cube所覆盖则称该cube是redundant的，经过irredundant之后所有的cube仍然是prime
+![irredundant](./img/irredundant.png)
+* Reduce：reduce步骤尽可能的缩小每个cube但是仍然保证所有的1都被覆盖，经过reduce之后cube可能不是prime
+![reduce](./img/reduce.png)
+
+执行完这一个循环之后如果再执行expand irredundant，可能能够得到一个更优的解。
+![new_expand](./img/new_expand.png)
+![whole_loop](./img/reduce_expand_loop.png)
+### Expand step detail
+expand的意思是从cube的移除一些变量，即将PCN中一些变量对应的slots变为11
+#### Build off set
+给定一个函数$F$, 构建该函数中0的cube cover，这些cubes被称作off set，在expand过程中不能触碰到这些cube，可以使用URP complement来获取一个函数的Off set
+#### Build the blocking matrix
+* 每一行表示cube中待expand的变量
+* 每一列表示off set中的一个cube
+* 如果行中的变量的极性与列中的极性不一致则该位置为1，否则为0
+![block_matrix](./img/block_matrix.png)
+blocking matrix 中的1表示该1所在的行所对应的变量只要存在就能够不触碰该1所在的列对应的cube，寻找该blocking matrix的一个覆盖并将在该覆盖下所选择的行所对应的变量保留下来即可得到该cube的一个expansion。
+#### 矩阵覆盖
+矩阵中只有0和1，从中选取最少的行使得每一列至少有一个1被某一行所覆盖。
+# Multi-level logic
+Two level logic的delay通常很低，但是他的面积相对较大，multi-lelve logic可以在面积和delay上进行trade-off。
+## Boolean logic network model
+boolean logic network类似gate logic电路图，不过这个图中的每个节点不再局限于与或非等逻辑门而是一个SOP形式的2-level的布尔函数。
+![boolean logic network](./img/logic_network.png)
+## Optimize on boolean logic network
+在一个boolean logic network上最简单的优化目标是Total literal cout，total literal count指的是网络中所有节点所表示的布尔函数等号右边变量的总数目，如下图的，它的total literal cout是9。
+![total_literal_count](./img/total_literal_count.png)
+### Operations on boolean logic Network
+* Simplify: 不改变节点的数目，只是对节点的内部的2-level logic进行简化
+* Remove: 把一些相对来说太小的节点推进该节点的fanout节点
+* Add: 也叫factoring，把一些大的节点给分成更小的节点
+
+Simplify操作其实就是2-level synthesis也就是ESPRESSO，Remove也比较简单只涉及graph edit操作，重点是Add操作。
+![simplify_remove](./img/simplify_remove.png)
+![add](./img/add.png)
+### Algebraic Division
+给定一个布尔函数 $F$ 的SOP形式，如果它可以表示成$$F=D\cdot Q + R$$那么可以将 $D$ 称作divisor(除数), $Q$ 称作Quotient(商)，$R$ 称作remainder(余数)，如果余数为0，则可以将divisor称作 $F$ 的一个factor，注意在这里面原变量和反变量需要被当成完全无关的变量。
+![algebric_division](./img/algebric_division.png)
+#### 伪代码
+![algebric_division_algorithm](./img/algebric_division_algorithm.png)
+需要注意$F$中的必须没有redundant cube，即没有一个cube被其它的cube完全覆盖，如 $F=a+ab+bc$ 中的 $ab$ 就是redundant cube。
+### Factoring
+有了上面所述的Algebraic division操作，factoring如下问题：
+给定若干个布尔函数，寻找出若干common divisor。
+![factoring](./img/factoring.png)
+divisor可以分为两种
+* 仅包含一个cube的divisor(e.g $d=ab$)
+* 包含多个cube的divisor(e.g $d= ab + cd + e$)
+#### Kernels and co-kernels
