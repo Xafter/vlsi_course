@@ -493,10 +493,127 @@ Simplify操作其实就是2-level synthesis也就是ESPRESSO，Remove也比较�
 ![algebric_division_algorithm](./img/algebric_division_algorithm.png)
 需要注意$F$中的必须没有redundant cube，即没有一个cube被其它的cube完全覆盖，如 $F=a+ab+bc$ 中的 $ab$ 就是redundant cube。
 ### Factoring
-有了上面所述的Algebraic division操作，factoring如下问题：
+有了上面所述的Algebraic division操作，factoring变成如下问题：
 给定若干个布尔函数，寻找出若干common divisor。
 ![factoring](./img/factoring.png)
 divisor可以分为两种
 * 仅包含一个cube的divisor(e.g $d=ab$)
 * 包含多个cube的divisor(e.g $d= ab + cd + e$)
 #### Kernels and co-kernels
+一个布尔表达式$F$的Kernel指的是用$F$除以一个single cube $c$ 得到的商 $k$，该商必须是cube-free的，这个single cube $c$ 被称作是kernel $k$ 的co-kernel.$$F=c\cdot k+R$$
+* single cube指的是单个乘积项，如 $abc$ 或 $xy$.
+* cube free指的是不能再从中分解出一个single cube而没有余数，如$abc + abd$不是cube free的，它可以分解出single cube $ab$, 而 $ab+c$ 是cube free的。
+
+**重要结论** $F\ 和\ G$ 存在common multiple-cube divisor的充分必要条件是：
+存在 $k1\in K(F), k2\in K(G)$ 使得 $d=k1\cap k2$ , 并且 $d$ 中至少有2个cube，式子中的 $k1\cap k2$ 指的是 $k1$ 和 $k2$ 中的comon cube。
+![multi_cube_divisor](./img/multi_cube_divisor.png)
+#### Find Kernels
+假设 $k_1$ 是 $F$ 的一个kernel，那么我们有$$F = cube1\cdot k_1 + R_1$$假设 $k_2$ 是 $k_1$ 的一个kernel，则$$k_1=cube2\cdot k2 + R_2$$结合上面两个式子有$$\begin{align}F&=cube1\cdot (cube2\cdot k_2 + R_2) + R_1\nonumber\\ &=cube1\cdot cube2\cdot k_2 + R_1 + cube1\cdot R_2\nonumber \end{align}$$因此可以得到 $k_2$ 也是 $F$ 的一个kernel，对应的co-kernel是 $cube1\cdot cube2$, 从上面的结果可以知道，kernel实际上是一种hierachical的结构
+
+![hier_kernel](./img/hier_kernel.png)
+
+* 一个level-0的kernel除了自身之外没有其他的kernel
+* 一个level-n的kernel至少包含一个level-(n-1)的kernel而除了自身之外没有其他的level-n的kernel
+
+另外一个重要结论是一个布尔表达式的co-kernel跟其PCN中两个以上cube的交集相关，注意这里的交集指的是两个cube中的common literal，如 $ace+bce + de + g$ 的潜在co-kernel有 $ace\cap bce=ce$， $ace\cap bce\cap de = e$，因此咱们可以用 $F$ 除以潜在co-kernel来启动算法然后递归的获取kernel, 需要注意的是，$F$ 必须是cube free的，如果不是则需要将 $F$ 除以最大的 common cube将 $F$ 变为cube free的。
+![find_kernel](./img/find_kernel_algorithm.png)
+
+通过这个算法，可以得到布尔函数所有的kernel和co-kernel，因此
+* 如果想从多个表达式中寻找single-cube common divisor，可以考虑它们的co-kernel
+* 如果想从多个表达式中寻找multiple-cube common divisor，可以考虑它们的kernel
+
+![single_multi_cube_div.png](./img/single_multi_cube_div.png)
+
+#### Summary
+![multi_level_model_summary](./img/multi_level_model_summary.png)
+
+接下来需要解决如何选择一个最好common divisor来做factoring操作
+#### Divisor extraction: single cube case
+* 构建一个仅包含0与1的矩阵，称作cube-literal matrix
+* 在矩阵中启发式的寻找prime rectangles
+* 每一个prime是一个好的common single cube divisor
+
+##### Cube-literal matrix
+cube-literal matrix 的每一行表示一个single cube，每一列表示一个literal，矩阵中某个位置所在列对应的literal如果在行对应的cube中出现了，那么该位置的值就为1，否则为一个“."。
+假设有三个布尔表达式
+* $P = abc + abd + eg$
+* $Q = abfg$
+* $R = bd + ef$
+
+他们对应的cube-literal matrix为
+![cube_literal_matrix](./img/cube_literal_matrix.png)
+
+图中第一行的值未填写，可以自己补全。
+##### rectangle
+矩阵中的一个rectangle指的是：一个行和列的集合，集合中每一行和每一列的在矩阵中的交叉点必须为1，注意此处没有要求行或者列连续，任意的行和列的集合均可。
+##### Prime rectangle
+prime rectangle指的是该rectangle不能再添加其他的行或者列，下图是一个prime rectan
+le的例子
+![prime_rectangle](./img/prime_rectangle.png)
+##### Common sigle-cube divisor
+Prime rectangle中的列给出的是该single-cube divisor的literal，行给出的是表达式中哪些cube中包含该divisor。
+
+![single_cube_divisor](./img/single_cube_divisor.png)
+经过这种common-divisor extraction之后可以减少literal的数目为
+$$L = (C - 1) \cdot \sum_{r}w(r) - C$$
+其中 $C$ 为该prime rectangle中包含的列的数目，$r$ 为其中某一行对应的single cube，$w(r)$ 为cube $r$ 在该网络中出现的次数。
+![single_literal_saved](./img/single_literal_saved.png)
+
+#### Divisor extraction: multiple cube case
+multiple-cube 的整个过程与single-cube case的类似，也是在一个矩阵中寻找prime rectangle。
+
+假设有三个布尔表达式
+* $P = af + bf + ag + cg + ade + bde + cde$
+* $Q = qf + bf + ace + bce$
+* $R = ade + cde$
+
+第一步需要寻找这些布尔函数的co-kernel和kernel，因为multipe-cube factors是这些函数kernel中乘机项的交集,他们的kernel和co-kernel分别是
+$P = af + bf + ag + cg + ade + bde + cde$
+* co-kernel: $a$ kernel: $de + f + g$
+* co-kernel: $b$ kernel: $de + f$
+* co-kernel: $de$ kernel: $a + b + c$
+* co-kernel: $f$ kernel: $a + b$
+* co-kernel: $c$ kernel: $de + g$
+* co-kernel: $g$ kernel: $a + c$
+* co-kernel: $1$ kernel: $P$ trival, ignore
+
+$Q = qf + bf + ace + bce$
+* co-kernel: $a$ or $b$ kernel $ce + f$
+* co-kernel: $f$ or $ce$ kernel $a + b$
+* co-kernel: 1 kernel: $Q$ trival, ignore
+
+$R=ade + cde$  
+* co-kernel: $de$ kernel: $a + c$
+* 注意此处 $R$ 本身不是自己的kernel，因为 $R$ 不是cube-free的
+
+##### Co-kernel-cube matrix
+Co-kernel-cube matrix 的每一行用一个pair<function, co-kernel>来表示，pair的第一个元素为一个布尔函数，第二个元素为该布尔函数的一个co-kernel，每一列表示所有这些布尔函数kernel中的一个cube，我们的例子中的co-kernel-cube matrix 的行和列如下图
+![co-kernel_cube_matrix](./img/co-kernel_cube_matrix.png)
+矩阵中元素所在列对应的cube如果在该元素所在行的布尔函数相对于该行中co-kernel的kernel中出现，则该元素值为1，否则为“.”
+![entry_co-kernel_kernel_matrix](./img/entry_co-kernel_kernel_matrix.png)
+构建好co-kernel-cube matrix之后，在其上定义的rectangle和prime rectangle与cube-literal matrix上的一致，将prime rectangle中的所有列对应的cube加在一起即可得到一个好的multiple-cube common divisor。
+![multi_cube_common_divisor.png](./img/multi_cube_common_divisor.png)
+通过这种common divisor提取之后能节省的literal的数目为
+$L = \sum_{r, c}V(r,c)-\sum_r w_R(r)-\sum_c w_C(c)$
+其中 $r$ 为某一行，$c$ 为某一列，$V(r,c)$ 为行 $r$ 中的co-kernel与列 $c$ 中cube相与之后得到的新的乘积项中的literal的数目，w_R(r)为1 + co-kernel中包含的literal数目，w_C(c) 为列c中的cube所包含的literal的数目。
+#### Find prime rectangle
+寻找这些prime rectangle被称作rectangle covering问题，使用启发式的贪心算法能很好的解决这个问题
+* 以能节省较多literal的单独一行开始
+* 交替的增加更多的行和列
+如 Rudell 的pingpong heuristic
+1. 选择能节省最多literal的一行作为开始
+2. 寻找另外在相同位置为1(或者更多)的行，依次将其加入直到不能加入更多的行
+3. 寻找另外在相同位置为1(或者更多)的列，依次加入直到不能加入更多的列
+4. 重复2-3直到不能添加任何行和列
+![rectangle_covering](./img/rectangle_covering.png)
+#### Sumary
+* Single cube extraction
+  * 构建cube-literal matrix；prime rectangle是一个好的single cube divisor
+  * simple bookkeeping可以估计出在布尔网络中能节省多少literal
+* Multiple cube extraction
+  * 构建co-kernal-cube FontMatrix;
+  * 每个prime rectangle是一个好的multiple cube divisor
+  * simple bookkeeping可以估计出在布尔网络中能节省多少literal
+* 在原理上他们都是rectangle covering问题
+  * 可以用启发式算法获取一个好的prime rectangle
+  * 有办法从网络中提取超过一个divisor
