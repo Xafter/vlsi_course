@@ -617,3 +617,64 @@ $L = \sum_{r, c}V(r,c)-\sum_r w_R(r)-\sum_c w_C(c)$
 * 在原理上他们都是rectangle covering问题
   * 可以用启发式算法获取一个好的prime rectangle
   * 有办法从网络中提取超过一个divisor
+## Implicit don't cares
+使用布尔逻辑网络来优化multi-level logic时会对每个node进行ESPRESSO风格的优化，这丢失了一部分外部的信息，可以从node周围的logic中提取出don't cares并辅助当前节点的优化，这些don‘t care是implicit的，需要方法将其提取出来，下面给出一个使用don‘t cares进行优化的例子(**don't care：输入不可能取到的pattern**)。
+![implicit_dont_care](./img/implicit_dont_care.png)
+如上图，$a,b,c,d$ 有六个不可能出现的pattern，在这些pattern下，布尔函数可以自由的选择取1还是取0，在卡诺图中用d标记出don't cares，可以将右侧的八个全部圈出来以获取更进一步的优化。
+### Multi-level don't cares
+假设有一个布尔逻辑网络中的一个node $f$,
+![multi_level_dc](./img/multi-level_dc.png)
+只考虑这单个的node并不能得到任何关于don't care的信息，$X,b,Y$可以取到任意值，如果**知道 $f$ 的输入node**，从中可以得到 $X,a,b$ 不可能取到的pattern,也可以得到 $X,b,Y$ 不可能取到的pattern
+![multi_level_dc1](./img/multi_level_dc_1.png)
+此时可以将 $f$ 简化为 $f=X+bY$
+![multi_level_dc_conclusion](./img/multi_level_dc_conclusion.png)
+另一方面，如果**知道 $f$的输出node**在某些情况下对 $f$ 的取值不敏感，那么也可以用其作为don't care来优化 $f$ node
+![output_dont_care](./img/output_dont_care.png)
+如上图，用 $Z$ 对 $f$ 不敏感的pattern进一步的得出：只要 $X$ 为0 $Z$ 就对 $f$ 不敏感，因此$XbY=0--$又是一个新的dont care,进一步将 $f$ 优化成常量1。
+![output_dont_care_simplify](./img/output_dont_care_simplify.png)
+#### Satifiability don't cares
+Satisfiability don't cares(SDC)表示的是每个node的输出与其输入不可能取到的pattern，如一个node的function为 $F$ 它的输入为 $a,b,c$ 那么它的satisfiability don't cares写做 $SDC_F(F,a,b,c)$, $SDC_F(F,a,b,c) = 1$ 对应的pattern表征的是$F, a, b, c$ 不可能取到的pattern, 将 $F$ 与 $F$ 的布尔表达式进行异或可以得到$SDC_F$
+$SDC_F(F,a,b,c) = F\oplus F(a,b,c)$
+如：
+$F= ab + c$
+$SDC_F(F,a,b,c) = F\oplus (ab + c) = F'ab + F'c + Fa'c' + Fb'c'$
+#### Controllability don't cares
+SDC并不能实际用于对某个node进行简化，需要通过SDC得到Controllability don't cares(CDC)才能对node进行简化，CDC指的是某个node的输入不可能取到的pattern，如一个node的function为 $F$ 他的输入为 $a,b,c$ 那么它的Controllability don't cares 写做$CDC_F(a,b ,c)$
+计算方法：  
+  * 计算出当前node所有输入的SDC
+  * 将所有这些SDC相或
+  * Universally Quantify掉所有当前node没有用到的变量
+  $$CDC_F=\forall_{variable\ not\ used\ in\ F}\sum_{X\in input\ of\ F}SDC_X$$![cdc_example](./img/cdc_example.png)
+如上图的例子中
+$$\begin{align} CDC_f &= \forall_b(X\oplus(a+b)+Y\oplus(ab))\nonumber\\
+&=(X\oplus(a+b)+Y\oplus(ab))|_{b=1}\cdot(X\oplus(a+b)+Y\oplus(ab))|_{b=0}\nonumber\\
+&=X'a + X'Y + Ya'\nonumber\end{align}$$如果外部给出了一些可能出现的pattern(external don‘t cares)，他们也可以用来计算CDC，如上面的例子中如果给定 $b=1,c=1,d=1$ 是外部不可能出现的pattern，将这些或进 CDC计算式子中的 $\sum_{X\in input\ of\ F}SDC_X$ 部分即可$$\begin{align}
+CDC_f&=\forall_b(X\oplus(a+b)+Y\oplus(ab)+bcd)\nonumber\\
+&=X'a + X'Y + Ya' + (a'cdX + acdY)\nonumber
+\end{align}$$
+#### Observability don't cares
+Observability don't cares指的是输入的一些pattern使得当前node的输出在布尔逻辑网络的输出端不可被观测到，也就是说网络的输出对于当前node的取值不敏感,如下图所示，$ODC_F$表示的是能使 $Z$ 对 $F$ 不敏感的 $a,b$ 的pattern。
+![odc_example](./img/odc_example.png)
+计算方法(如上面的例子)：
+  * 计算出$\overline{\partial Z/\partial F}$
+  * Universally quantify 掉所有F中没有用到的变量
+$$ODC_F=\forall_{variable\ not\ used\ in F}(\overline{\partial Z/\partial F})$$
+解释：
+根据香农分解$$Z = F\cdot Z_F + F'\cdot Z_{F'}$$
+在$Z_F=Z_{F'}$时，$Z对F不敏感$，也就是$Z_F\overline \oplus Z_{F'}=1 \Rightarrow \overline{Z_F\oplus Z_{F'}} \Rightarrow \overline{\partial Z/\partial F} =1$
+如上图的例子中
+$$\begin{align}
+ODC_F &= \forall_c\overline{((ab+Fc'+F'b')|_{F=1}\oplus (ab+Fc'+F'b')|F=0))}\nonumber\\
+&=\forall_c(ab+ac'+a'b'c'+a'bc)\nonumber\\
+&=ab\nonumber
+\end{align}$$
+
+如果网络有很多输出都依赖于某一个node，那么只有所有的这些输出都不能观测到该node输出时才是ODC，因此更通用的计算方式是
+$$\begin{align}
+ODC_F=\forall_{variable\ not\ used\ in F}(\prod_{output\ i} \overline{\partial Z_i/\partial F})\nonumber
+\end{align}$$
+### Summary
+ODC和CDC给出了所有能用来优化某个node的的don't care的集合
+![dc_summary1](./img/dc_summary1.png)
+![dc_summary2](./img/dc_summary2.png)
+![dc_summary3](./img/dc_summary3.png)
