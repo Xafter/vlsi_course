@@ -1,3 +1,9 @@
+<div align='center'>
+  <font size='70'>Synthesis basics</font>
+</div>
+<div align='center'>
+  <font size='5'>summerized by xwang</font>
+</div>
 [toc]
 # Boolean Algebra Basics
 ## Cofactor
@@ -54,11 +60,14 @@ $\forall_{xy}F=\forall_x(\forall_yF)=F_{xy}\cdot F_{xy'}\cdot F_{x'y}\cdot F_{x'
 $\exist_{xy}F=\exist_x(\exist_yF)=F_{xy} + F_{xy'} + F_{x'y} + F_{x'y'}$
 # Application To Logic Network Repair
 需要一个电路来实现 $f(a,b)=ab + b'$ 的逻辑功能，假设实现错了一个gate，如图中的红色框部分，需要修复它并得到它正确实现时的逻辑门。
-![wrong_circuit](./img/wrong_circuit.png)
+
+<center><img src="./img/wrong_circuit.png" alt="drawing" width="400" align="middle"/></center>
 如下图，首先将错误的gate用一个 4:1 来代替，引入了四个新的变量，我们可以将这四个新的变量取不同的值来模拟任意的逻辑门。
-![replace_mux](./img/mux_replace.png)
-接下来构建一个新的逻辑函数$Z(ab,d1,d2,d3,d4)$使得它仅在 $f==G$ 时恒为1，如下图所示，只需要将 G 与 f 的正确实现进行同或即可得到相应的函数 $Z$
-![replace_mux](./img/exnor_circuit.png)
+<center><img src="./img/mux_replace.png" alt="drawing" width="500" align="middle"/></center>
+
+接下来构建一个新的逻辑函数$Z(a,b,d1,d2,d3,d4)$使得它仅在 $f==G$ 时恒为1，如下图所示，只需要将 G 与 f 的正确实现进行同或即可得到相应的函数 $Z$
+<center><img src="./img/exnor_circuit.png" alt="drawing" width="500" align="middle"/></center>
+
 现在想得到的是一组mux的输入 $d0, d1, d2, d3$ 使得对于所有的 $a,b$ 都有 $Z==1$，通过universal quantification能够得到该问题的答案，即通过
 $$\forall_{ab}Z=1$$
 求出对应的$d_0, d_1, d_2, d_3$的取值。
@@ -107,7 +116,7 @@ $f$ 是 tautology 当且仅当 $f_x$ 和$f_{x'}$ 都是 tautology
 $ab + ac'd + c'de'$：是unate
 $xy + x'y + xyz' + z$：不是unate但是它关于变量 $y$ 是unate
 
-**重要结论：** 一个cube list如果是unate，当且仅当它包含一个所有slot都是11的cube。
+**重要结论：** 一个cube list如果是unate，当且仅当它包含一个所有slot都是11的cube时，其对应的布尔函数是tautology。
 当得到一个 unate cube list 时可以采用如下终止规则
 * 终止规则1: 该cube list包含所有slot都是11的cube，此时该cube list对应的布尔函数是tautology
 * 终止规则2: 该cube list不包含所有slot都是11的cube，此时该cube list对应的布尔函数不是tautology
@@ -447,16 +456,19 @@ Two level logic指的是使用SOP形式的电路来表示一个布尔逻辑函�
 如上图是一个最优解和一个相对较优的解的卡诺图表示，他们都是使每一个product项“尽可能的大”，这些“尽可能的大”的product项被称作**Primes**，最优解一定是Primes的覆盖（result from 1950s），可以看出这两个解都是irredundant，即不能通过移除一个prime而获得更优的解。
 ## Reduce-Expand-Irredundant optimization
 假设以下面的卡诺图作为开始
-![begin_map](./img/begin_map.png)
+<center><img src="./img/begin_map.png" alt="drawing" width="250" align="middle"/></center>
 * Expand：扩充每个cube使其尽可能的大,即让它变为prime
-![expand](./img/expand.png)
+<center><img src="./img/expand.png" alt="drawing" width="250" align="middle"/></center>
+
 * Irredundant：移除redundant cube，该cube中的所有的1均被其他的cube所覆盖则称该cube是redundant的，经过irredundant之后所有的cube仍然是prime
-![irredundant](./img/irredundant.png)
+<center><img src="./img/irredundant.png" alt="drawing" width="250" align="middle"/></center>
+
 * Reduce：reduce步骤尽可能的缩小每个cube但是仍然保证所有的1都被覆盖，经过reduce之后cube可能不是prime
-![reduce](./img/reduce.png)
+<center><img src="./img/reduce.png" alt="drawing" width="250" align="middle"/></center>
 
 执行完这一个循环之后如果再执行expand irredundant，可能能够得到一个更优的解。
-![new_expand](./img/new_expand.png)
+<center><img src="./img/new_expand.png" alt="drawing" width="250" align="middle"/></center>
+
 ![whole_loop](./img/reduce_expand_loop.png)
 ### Expand step detail
 expand的意思是从cube的移除一些变量，即将PCN中一些变量对应的slots变为11
@@ -466,7 +478,8 @@ expand的意思是从cube的移除一些变量，即将PCN中一些变量对应�
 * 每一行表示cube中待expand的变量
 * 每一列表示off set中的一个cube
 * 如果行中的变量的极性与列中的极性不一致则该位置为1，否则为0
-![block_matrix](./img/block_matrix.png)
+<center><img src="./img/block_matrix.png" alt="drawing" width="250" align="middle"/></center>
+
 blocking matrix 中的1表示该1所在的行所对应的变量只要存在就能够不触碰该1所在的列对应的cube，寻找该blocking matrix的一个覆盖并将在该覆盖下所选择的行所对应的变量保留下来即可得到该cube的一个expansion。
 #### 矩阵覆盖
 矩阵中只有0和1，从中选取最少的行使得每一列至少有一个1被某一行所覆盖。
@@ -474,7 +487,38 @@ blocking matrix 中的1表示该1所在的行所对应的变量只要存在就�
 Two level logic的delay通常很低，但是他的面积相对较大，multi-lelve logic可以在面积和delay上进行trade-off。
 ## Boolean logic network model
 boolean logic network类似gate logic电路图，不过这个图中的每个节点不再局限于与或非等逻辑门而是一个SOP形式的2-level的布尔函数。
-![boolean logic network](./img/logic_network.png)
+<div><img src="./img/ordinary_gate.png" alt="drawing" width="400" align="middle"/></div>
+```dot
+digraph {
+  label="Bolean logic Network"
+  rankdir=LR;
+  subgraph {
+
+    node[shape=circle, fontsize=10, color=red];
+    {
+        rank=same;
+        a[shape=rectangle, fontsize=10, color=green, width=0.5];
+        b[shape=rectangle, fontsize=10, color=green, width=0.5];
+        c[shape=rectangle, fontsize=10, color=green, width=0.5];
+    }
+    d[shape=oval, label="x=ab"];
+    e[shape=oval, label="y=x+c"];
+    {
+        rank=same;
+        x[shape=rectangle, fontsize=10, color=green, width=0.5];
+        y[shape=rectangle, fontsize=10, color=green, width=0.5];
+    }
+    a->d;
+    b->d;
+    c->e;
+    d->e;
+    d->x;
+    e->y;
+
+  }
+}
+```
+
 ## Optimize on boolean logic network
 在一个boolean logic network上最简单的优化目标是Total literal cout，total literal count指的是网络中所有节点所表示的布尔函数等号右边变量的总数目，如下图的，它的total literal cout是9。
 ![total_literal_count](./img/total_literal_count.png)
