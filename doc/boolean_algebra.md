@@ -1,8 +1,5 @@
 <div align='center'>
-  <font size='70'>Synthesis basics</font>
-</div>
-<div align='center'>
-  <font size='5'>summerized by xwang</font>
+  <font size='70'>Synthesis Basics</font>
 </div>
 [toc]
 # Boolean Algebra Basics
